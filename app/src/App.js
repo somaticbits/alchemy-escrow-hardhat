@@ -10,10 +10,24 @@ export async function approve(escrowContract, signer) {
   await approveTxn.wait();
 }
 
+const useLocalStorage = (storageKey, fallbackState) => {
+  const [value, setValue] = useState(
+      JSON.parse(localStorage.getItem(storageKey)) ?? fallbackState
+  );
+
+  useEffect(() => {
+    localStorage.setItem(storageKey, JSON.stringify(value));
+  }, [value, storageKey]);
+
+  return [value, setValue];
+};
+
 function App() {
-  const [escrows, setEscrows] = useState([]);
+  const [escrows, setEscrows] = useLocalStorage("ESCROWS", []);
   const [account, setAccount] = useState();
   const [signer, setSigner] = useState();
+
+  const addEscrow = (escrow) => { setEscrows([...escrows, escrow]); };
 
   useEffect(() => {
     async function getAccounts() {
@@ -29,7 +43,8 @@ function App() {
   async function newContract() {
     const beneficiary = document.getElementById('beneficiary').value;
     const arbiter = document.getElementById('arbiter').value;
-    const value = ethers.BigNumber.from(document.getElementById('wei').value);
+    // const value = ethers.BigNumber.from(document.getElementById('wei').value);
+    const value = ethers.utils.parseEther(document.getElementById('wei').value);
     const escrowContract = await deploy(signer, arbiter, beneficiary, value);
 
 
@@ -37,7 +52,8 @@ function App() {
       address: escrowContract.address,
       arbiter,
       beneficiary,
-      value: value.toString(),
+      // value: value.toString(),
+      value: ethers.utils.formatEther(value),
       handleApprove: async () => {
         escrowContract.on('Approved', () => {
           document.getElementById(escrowContract.address).className =
@@ -50,7 +66,7 @@ function App() {
       },
     };
 
-    setEscrows([...escrows, escrow]);
+    addEscrow(escrow);
   }
 
   return (
@@ -68,7 +84,7 @@ function App() {
         </label>
 
         <label>
-          Deposit Amount (in Wei)
+          Deposit Amount
           <input type="text" id="wei" />
         </label>
 
